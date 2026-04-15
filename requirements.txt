@@ -1,0 +1,26 @@
+# Core dependencies
+langchain>=0.1.0
+langchain-community>=0.0.20
+llama-index>=0.9.0
+llama-index-llms-ollama>=0.1.0
+llama-index-embeddings-ollama>=0.1.0
+llama-index-retrievers-bm25>=0.1.0
+llama-index-postprocessor-cohere-rerank>=0.1.0
+chromadb>=0.4.0
+faiss-cpu>=1.7.0
+
+# Embedding models
+sentence-transformers>=2.2.0
+bge-reranker>=0.0.5
+
+# Evaluation
+ragas>=0.1.0
+pytest>=7.0.0
+
+# UI
+gradio>=4.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+tqdm>=4.60.0

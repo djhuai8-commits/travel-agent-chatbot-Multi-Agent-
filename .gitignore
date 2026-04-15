@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.env
+.chromadb/
+.faiss_index/
+eval_results.json
+eval_table.md
+benchmark_results.json
+*.log
+.DS_Store
