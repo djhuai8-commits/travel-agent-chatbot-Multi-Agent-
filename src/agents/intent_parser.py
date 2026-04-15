@@ -5,9 +5,8 @@
 
 import json
 from typing import Optional
-from langchain.prompts import PromptTemplate
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import LLMChain
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
 
 
 # ============================================================
@@ -150,7 +149,8 @@ class IntentParserAgent:
                 temperature=temperature
             )
 
-        self.chain = LLMChain(prompt=self.prompt, llm=self.llm)
+        # LCEL: prompt | llm 替代已废弃的 LLMChain
+        self.chain = self.prompt | self.llm
 
     def parse(self, user_input: str) -> dict:
         """
@@ -166,7 +166,8 @@ class IntentParserAgent:
             ValueError: 解析失败或输出不是合法 JSON
         """
         raw = self.chain.invoke({"user_input": user_input})
-        raw_text = raw["text"] if isinstance(raw, dict) else raw
+        # LCEL 返回 AIMessage，通过 .content 取文本
+        raw_text = raw.content if hasattr(raw, 'content') else str(raw)
 
         # 提取 JSON 部分（防止 LLM 输出多余文字）
         text = raw_text.strip()

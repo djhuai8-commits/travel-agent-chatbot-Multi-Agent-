@@ -5,9 +5,8 @@
 
 import json
 from typing import Dict, Any, List, Optional
-from langchain.prompts import PromptTemplate
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import LLMChain
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
 
 
 # ============================================================
@@ -151,7 +150,8 @@ class ItineraryPlannerAgent:
         if not use_local:
             self.llm = ChatOpenAI(model=model_name, temperature=temperature)
 
-        self.chain = LLMChain(prompt=self.prompt, llm=self.llm)
+        # LCEL: prompt | llm 替代已废弃的 LLMChain
+        self.chain = self.prompt | self.llm
 
     def plan(
         self,
@@ -173,7 +173,8 @@ class ItineraryPlannerAgent:
             "knowledge_context": knowledge_context
         })
 
-        text = result["text"] if isinstance(result, dict) else result
+        # LCEL 返回 AIMessage，通过 .content 取文本
+        text = result.content if hasattr(result, 'content') else str(result)
         return text.strip()
 
     def plan_with_retry(

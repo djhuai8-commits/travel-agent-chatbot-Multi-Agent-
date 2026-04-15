@@ -53,8 +53,7 @@ def chat(user_input: str, history: list):
 
 # 构建 Gradio 界面
 with gr.Blocks(
-    title="Travel Agent - Multi-Agent 旅行规划助手",
-    theme=gr.themes.Soft()
+    title="Travel Agent - Multi-Agent 旅行规划助手"
 ) as demo:
     gr.Markdown(
         "# 🌍 Travel Agent\n"

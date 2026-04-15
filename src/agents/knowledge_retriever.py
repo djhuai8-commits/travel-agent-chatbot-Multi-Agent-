@@ -5,19 +5,17 @@
 
 import json
 from typing import List, Dict, Any, Optional, Tuple
-from langchain.prompts import PromptTemplate
-from langchain.chat_models import ChatOpenAI
-from langchain.schema import Document
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
+from langchain_core.documents import Document
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
-from llama_index.core.retrievers import VectorIndexRetriever, BM25Retriever
+from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.postprocessor import SimilarityPostprocessor
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.postprocessing import (
-    NodeWithScore,
-    SimilarityPostprocessor,
-    KeywordNodePostprocessor,
-)
+from llama_index.core.postprocessor import SimilarityPostprocessor, KeywordNodePostprocessor
+from llama_index.core.schema import NodeWithScore
 try:
     from llama_index.postprocessor.cohere_rerank import CohereRerank
 except Exception:
