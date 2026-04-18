@@ -35,7 +35,7 @@ class TravelAgentPipeline:
         use_local: bool = True,
         use_hyde: bool = True,
         local_model: str = "qwen2.5:7b",
-        embed_model: str = "BAAI/bge-m3-zh"
+        embed_model: str = "nomic-embed-text"
     ):
         """
         Args:
@@ -147,7 +147,7 @@ class TravelAgentPipeline:
 
 def build_retriever_from_json(
     json_path: str,
-    embed_model: str = "BAAI/bge-m3-zh",
+    embed_model: str = "nomic-embed-text",
     chunk_size: int = 512,
     chunk_overlap: int = 64
 ) -> HybridRetriever:

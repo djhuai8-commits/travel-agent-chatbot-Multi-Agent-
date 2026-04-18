@@ -101,6 +101,9 @@ class ItineraryPlannerAgent:
     def _build_prompt_template(self):
         """构建行程编排 Prompt"""
 
+        def _escape_braces(text: str) -> str:
+            return text.replace("{", "{{").replace("}", "}}")
+
         few_shot_text = "\n".join([
             f"\n示例 {i+1}：\n\n背景信息：\n{ex['context']}\n\n"
             f"行程安排：\n{ex['output']}\n"
@@ -122,10 +125,10 @@ class ItineraryPlannerAgent:
                 "6. 最后一天不要安排远距离景点，留足返程时间\n"
                 "7. 每天行程包含：上午/下午/晚上各时段安排，附餐厅推荐\n\n"
                 "【负面示例】（必须避免的错误）\n"
-                f"❌ 错误示范：\n{neg['bad_output']}\n\n"
-                f"✅ 正确修正：\n{neg['correction']}\n\n"
+                f"❌ 错误示范：\n{_escape_braces(neg['bad_output'])}\n\n"
+                f"✅ 正确修正：\n{_escape_braces(neg['correction'])}\n\n"
                 "【参考示例】\n"
-                f"{few_shot_text}\n\n"
+                f"{_escape_braces(few_shot_text)}\n\n"
                 "【用户旅行需求（JSON）】\n"
                 "{intent_json}\n\n"
                 "【目的地检索知识】\n"

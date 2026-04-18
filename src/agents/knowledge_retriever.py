@@ -23,7 +23,6 @@ except Exception:
 
 import faiss
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 
 # ============================================================
@@ -48,17 +47,45 @@ class HybridRetriever:
     采用 Reciprocal Rank Fusion (RRF) 合并两路结果：
     RRF_score(d) = Σ 1/(k+rank_i(d))
     k=60（标准参数），k 越小越偏向"两路都靠前"的文档
+
+    支持 Ollama 本地 embedding（默认）和 SentenceTransformer 两种后端。
     """
 
     def __init__(
         self,
-        embed_model_name: str = "BAAI/bge-m3-zh",
+        embed_model_name: str = "nomic-embed-text",
         k: int = 60,
-        device: str = "cpu"
+        device: str = "cpu",
+        ollama_base_url: str = "http://localhost:11434",
+        use_ollama_embed: bool = True
     ):
         self.k = k
-        self.embed_model = SentenceTransformer(embed_model_name, device=device)
-        self.embedding_dim = self.embed_model.get_sentence_embedding_dimension()
+        self.use_ollama_embed = use_ollama_embed
+        self.embedding_dim = None
+
+        if self.use_ollama_embed:
+            # 使用 Ollama 本地 embedding（无需下载 HuggingFace 模型）
+            import requests
+            self._ollama_url = f"{ollama_base_url.rstrip('/')}/api/embeddings"
+            self._model_name = embed_model_name
+            self._session = requests.Session()
+            # 先探测维度
+            try:
+                test_resp = self._session.post(self._ollama_url, json={
+                    "model": self._model_name, "prompt": "test"
+                }, timeout=120)
+                test_resp.raise_for_status()
+                vec = test_resp.json().get("embedding", [])
+                self.embedding_dim = len(vec)
+                print(f"✅ Ollama embedding 模型: {self._model_name}, 维度: {self.embedding_dim}")
+            except Exception as e:
+                print(f"⚠️ Ollama embedding 连接失败: {e}")
+                raise
+            self.embed_model = None  # 不需要 SentenceTransformer
+        else:
+            from sentence_transformers import SentenceTransformer
+            self.embed_model = SentenceTransformer(embed_model_name, device=device)
+            self.embedding_dim = self.embed_model.get_sentence_embedding_dimension()
 
         self.index: Optional[faiss.Index] = None
         self.documents: List[str] = []
@@ -75,8 +102,29 @@ class HybridRetriever:
         self.doc_metadata = [doc.metadata for doc in documents]
 
         # ---------- 向量索引 ----------
-        embeddings = self.embed_model.encode(texts, show_progress_bar=True,
-                                              batch_size=32, convert_to_numpy=True)
+        if self.use_ollama_embed:
+            # 使用 Ollama API 批量生成 embeddings（分批避免超时）
+            batch_size = 16
+            all_embeddings = []
+            total = len(texts)
+            for i in range(0, total, batch_size):
+                batch = texts[i:i + batch_size]
+                # 用 Ollama /api/embeddings 逐个请求（Ollama 不原生支持批量）
+                batch_embs = []
+                for text in batch:
+                    resp = self._session.post(
+                        self._ollama_url,
+                        json={"model": self._model_name, "prompt": text},
+                        timeout=120
+                    )
+                    resp.raise_for_status()
+                    batch_embs.append(resp.json()["embedding"])
+                all_embeddings.extend(batch_embs)
+                print(f"  Embedding 进度: {min(i + batch_size, total)}/{total}")
+            embeddings = np.array(all_embeddings, dtype=np.float32)
+        else:
+            embeddings = self.embed_model.encode(texts, show_progress_bar=True,
+                                                  batch_size=32, convert_to_numpy=True)
 
         # 使用 IndexFlatIP（内积）做相似度检索
         self.index = faiss.IndexFlatIP(self.embedding_dim)
@@ -92,15 +140,24 @@ class HybridRetriever:
             import re
             tokenized = [re.findall(r'\w+', text) for text in texts]
 
-        from rank_bm25 import BM25Ok
-        self._bm25 = BM25Ok(tokenized)
+        from rank_bm25 import BM25Okapi
+        self._bm25 = BM25Okapi(tokenized)
         self._tokenized_docs = tokenized
 
         print(f"✅ 索引构建完成：{len(texts)} 个文档块，维度 {self.embedding_dim}")
 
     def _vector_search(self, query: str, top_k: int) -> List[Tuple[int, float]]:
         """向量检索"""
-        q_emb = self.embed_model.encode([query], convert_to_numpy=True)
+        if self.use_ollama_embed:
+            resp = self._session.post(
+                self._ollama_url,
+                json={"model": self._model_name, "prompt": query},
+                timeout=120
+            )
+            resp.raise_for_status()
+            q_emb = np.array([resp.json()["embedding"]], dtype=np.float32)
+        else:
+            q_emb = self.embed_model.encode([query], convert_to_numpy=True)
         faiss.normalize_L2(q_emb)
         scores, indices = self.index.search(q_emb.astype(np.float32), top_k)
         return [(int(idx), float(score)) for idx, score in zip(indices[0], scores[0]) if idx >= 0]

@@ -100,6 +100,10 @@ class IntentParserAgent:
     def _build_prompt_template(self):
         """构建 System Prompt 和 Few-shot 模板"""
 
+        def _escape_braces(text: str) -> str:
+            """将花括号转义，避免被 LangChain PromptTemplate 解析为模板变量"""
+            return text.replace("{", "{{").replace("}", "}}")
+
         schema_lines = "\n".join(
             f"- {k}: {v}" for k, v in TRAVEL_INTENT_SCHEMA.items()
         )
@@ -112,14 +116,14 @@ class IntentParserAgent:
             template=(
                 "你是一位专业的旅行规划助手，擅长从用户的自然语言中提取结构化的旅行需求。\n\n"
                 "【输出格式说明】\n"
-                f"{schema_lines}\n\n"
+                f"{_escape_braces(schema_lines)}\n\n"
                 "【输出要求】\n"
                 "- 仅输出 JSON，不要有其他文字\n"
                 "- 字段值尽量具体，不要留太多空字符串\n"
                 "- destinations 按访问顺序排列\n"
                 "- days_per_destination 键名必须和 destinations 中的城市名完全一致\n\n"
                 "【Few-shot 示例】\n"
-                f"{few_shot_text}"
+                f"{_escape_braces(few_shot_text)}"
                 "现在开始解析用户请求：\n\n"
                 "用户输入：{user_input}\n\n"
                 "解析结果（JSON）："
